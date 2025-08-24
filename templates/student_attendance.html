@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mark {{ class_name }} Attendance</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .final-attendance-list ul { column-count: 2; }
+        @media (max-width: 600px) { .final-attendance-list ul { column-count: 1; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Mark {{ class_name }} Attendance</h2>
+            <p>Enter your enrollment number for the active {{ class_name }} session.</p>
+        </div>
+
+        <div id="status-message" class="status-message" style="display: none;"></div>
+
+        <div class="dashboard-content">
+            {% if active_session %}
+                <div class="session-info">
+                    <p>Active Session for: <strong>{{ active_session.class_name }}</strong></p>
+                    <p>Time Remaining: <span id="timer-student" style="font-weight: bold;"></span></p>
+                </div>
+                <form id="attendance-form" class="attendance-form">
+                    <div class="form-group">
+                        <label for="enrollment_no">Enrollment Number:</label>
+                        <input type="text" id="enrollment_no" name="enrollment_no" required placeholder="e.g., Y24102001" autocomplete="off" style="text-transform: uppercase;">
+                        <div id="student-name-display"></div>
+                    </div>
+                    <button type="submit" id="mark-btn" class="button">Mark My Attendance</button>
+                </form>
+            {% elif present_students %}
+                <div class="final-attendance-list">
+                    <h3>Attendance for Today ({{ todays_date }})</h3>
+                    <p>The following students have been marked present today.</p>
+                    <ul>
+                        {% for student in present_students %}
+                            <li>{{ student.name }} ({{ student.enrollment_no }})</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% else %}
+                <div class="info-message">
+                    There is no active attendance session for {{ class_name }} right now.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    <script>
+        window.activeSessionDataStudent = {{ active_session | tojson | safe }};
+        window.geofenceData = {{ geofence_data | tojson | safe }};
+    </script>
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+</body>
+</html>
