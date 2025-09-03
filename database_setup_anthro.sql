@@ -21,14 +21,11 @@ CREATE TABLE students (
     batch VARCHAR(50) NOT NULL
 );
 
--- Table for class data, including geofence information
+-- Table for class data
 CREATE TABLE classes (
     id SERIAL PRIMARY KEY,
     class_name VARCHAR(100) UNIQUE NOT NULL,
-    controller_id INTEGER REFERENCES users(id),
-    geofence_lat REAL,
-    geofence_lon REAL,
-    geofence_radius INT
+    controller_id INTEGER REFERENCES users(id)
 );
 
 -- Table to log attendance sessions created by the controller
@@ -39,7 +36,10 @@ CREATE TABLE attendance_sessions (
     session_token VARCHAR(32) UNIQUE NOT NULL,
     start_time TIMESTAMPTZ NOT NULL,
     end_time TIMESTAMPTZ NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    -- NEW: Store the location for this specific session
+    session_lat REAL,
+    session_lon REAL
 );
 
 -- Table to store individual student attendance records for each session
@@ -69,9 +69,9 @@ CREATE TABLE session_device_fingerprints (
 -- Insert the single controller user
 INSERT INTO users (username, role) VALUES ('controller', 'controller') ON CONFLICT (username) DO NOTHING;
 
--- Insert the class data for B.Sc. - Anthro
-INSERT INTO classes (class_name, controller_id, geofence_lat, geofence_lon, geofence_radius) VALUES
-('B.Sc. - Anthro', (SELECT id FROM users WHERE username = 'controller'), 23.828889, 78.775278, 40)
+-- Insert the class data for B.Sc. - Anthro (geofence info removed from here)
+INSERT INTO classes (class_name, controller_id) VALUES
+('B.Sc. - Anthro', (SELECT id FROM users WHERE username = 'controller'))
 ON CONFLICT (class_name) DO NOTHING;
 
 -- Insert all B.Sc. - Anthro student data

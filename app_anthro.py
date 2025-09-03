@@ -15,6 +15,7 @@ app.secret_key = os.urandom(24)
 # --- Configuration for the new class ---
 CLASS_NAME = 'B.Sc. - Anthro'
 BATCH_CODE = 'BSC'
+GEOFENCE_RADIUS = 50 # New fixed radius in meters
 
 # Controller login credentials and display name
 CONTROLLER_USERNAME = "controller"
@@ -162,18 +163,20 @@ def mark_attendance():
                     return jsonify({"success": False, "message": "Enrollment number not found.", "category": "danger"}), 404
                 student_id = student_result[0]
 
+                # UPDATED: Fetch session lat/lon from the session table itself
                 cur.execute(
-                    "SELECT c.geofence_lat, c.geofence_lon, c.geofence_radius FROM attendance_sessions s JOIN classes c ON s.class_id = c.id WHERE s.id = %s AND s.is_active = TRUE AND s.end_time > %s",
+                    "SELECT session_lat, session_lon FROM attendance_sessions WHERE id = %s AND is_active = TRUE AND end_time > %s",
                     (data['session_id'], datetime.now(timezone.utc))
                 )
                 session_info = cur.fetchone()
-                if not session_info:
+                if not session_info or not session_info[0]:
                     return jsonify({"success": False, "message": "Invalid or expired session.", "category": "danger"}), 400
 
-                lat, lon, radius = session_info
+                lat, lon = session_info
+                # UPDATED: Use the new fixed radius and compare distance
                 distance = haversine_distance(float(data['latitude']), float(data['longitude']), lat, lon)
-                if distance > radius:
-                    return jsonify({"success": False, "message": f"You are {distance:.0f}m away and outside the allowed radius.", "category": "danger"}), 403
+                if distance > GEOFENCE_RADIUS:
+                    return jsonify({"success": False, "message": f"You are {distance:.0f}m away and outside the allowed {GEOFENCE_RADIUS}m radius.", "category": "danger"}), 403
 
                 long_fingerprint = data['device_fingerprint']
                 hashed_fingerprint = hashlib.sha256(long_fingerprint.encode('utf-8')).hexdigest()
@@ -211,16 +214,20 @@ def mark_attendance():
 
     active_session = get_active_class_session()
     present_students = None
-    geofence_data = {}
+    # UPDATED: Pass geofence data for the active session to the student page
+    geofence_data = {'geofence_radius': GEOFENCE_RADIUS}
     todays_date_str = None
     
     conn = get_db_connection()
     if conn:
         try:
             with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-                cur.execute("SELECT geofence_lat, geofence_lon, geofence_radius FROM classes WHERE class_name = %s LIMIT 1", (CLASS_NAME,))
-                class_info = cur.fetchone()
-                if class_info: geofence_data = dict(class_info)
+                if active_session:
+                    cur.execute("SELECT session_lat, session_lon FROM attendance_sessions WHERE id = %s", (active_session['id'],))
+                    session_loc = cur.fetchone()
+                    if session_loc:
+                        geofence_data['geofence_lat'] = session_loc['session_lat']
+                        geofence_data['geofence_lon'] = session_loc['session_lon']
 
                 if not active_session:
                     class_id = get_class_id_by_name(CLASS_NAME)
@@ -262,54 +269,29 @@ def mark_attendance():
 @controller_required
 def controller_dashboard():
     active_session = get_active_class_session()
-    conn = get_db_connection()
-    if not conn:
-        flash("Database connection failed.", "danger")
-        return redirect(url_for('login'))
-    
-    past_sessions = []
-    class_id = get_class_id_by_name(CLASS_NAME)
-
-    if class_id:
-        try:
-            with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-                cur.execute(
-                    "SELECT id, start_time, end_time, is_active FROM attendance_sessions WHERE class_id = %s AND is_active = FALSE ORDER BY start_time DESC",
-                    (class_id,)
-                )
-                past_sessions_raw = cur.fetchall()
-                past_sessions = [
-                    {
-                        'id': s['id'],
-                        'start_time': s['start_time'].astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z'),
-                        'end_time': s['end_time'].astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z'),
-                        'is_active': s['is_active']
-                    } for s in past_sessions_raw
-                ]
-        except Exception as e:
-            print(f"ERROR: controller_dashboard: {e}")
-            flash("An error occurred while fetching past sessions.", "danger")
-        finally:
-            conn.close()
-
     return render_template('admin_dashboard.html',
                            active_session=active_session,
                            username=session.get('username'),
                            controller_name=CONTROLLER_DISPLAY_NAME,
-                           class_id=class_id,
-                           all_sessions=past_sessions,
                            class_name=CLASS_NAME)
 
 @app.route('/start_session', methods=['POST'])
 @controller_required
 def start_session():
+    # UPDATED: Get location from JSON body sent by frontend JS
+    data = request.get_json()
+    latitude = data.get('latitude')
+    longitude = data.get('longitude')
+    if not latitude or not longitude:
+        return jsonify({"success": False, "message": "Location data not provided.", "category": "danger"}), 400
+
     if get_active_class_session():
-        flash("An active session already exists.", "info")
-        return redirect(url_for('controller_dashboard'))
+        return jsonify({"success": False, "message": "An active session already exists.", "category": "info"}), 409
+        
     conn = get_db_connection()
     if not conn:
-        flash("Database connection failed.", "danger")
-        return redirect(url_for('controller_dashboard'))
+        return jsonify({"success": False, "message": "Database connection failed.", "category": "danger"}), 500
+        
     try:
         with conn.cursor() as cur:
             class_id = get_class_id_by_name(CLASS_NAME)
@@ -318,20 +300,20 @@ def start_session():
             start_time = datetime.now(timezone.utc)
             end_time = start_time + timedelta(minutes=5)
             session_token = secrets.token_hex(16)
+            # UPDATED: Insert the session's lat/lon into the new columns
             cur.execute(
-                "INSERT INTO attendance_sessions (class_id, controller_id, session_token, start_time, end_time, is_active) VALUES (%s, %s, %s, %s, %s, TRUE) RETURNING id",
-                (class_id, session['user_id'], session_token, start_time, end_time)
+                "INSERT INTO attendance_sessions (class_id, controller_id, session_token, start_time, end_time, is_active, session_lat, session_lon) VALUES (%s, %s, %s, %s, %s, TRUE, %s, %s) RETURNING id",
+                (class_id, session['user_id'], session_token, start_time, end_time, latitude, longitude)
             )
             new_session_id = cur.fetchone()[0]
             conn.commit()
-            flash(f"New attendance session (ID: {new_session_id}) started successfully!", "success")
+            return jsonify({"success": True, "message": f"New session (ID: {new_session_id}) started!", "category": "success"})
     except Exception as e:
         conn.rollback()
         print(f"ERROR: start_session: {e}")
-        flash("An error occurred while starting the session.", "danger")
+        return jsonify({"success": False, "message": "Error starting session.", "category": "danger"}), 500
     finally:
         if conn: conn.close()
-    return redirect(url_for('controller_dashboard'))
 
 @app.route('/end_session/<int:session_id>', methods=['POST'])
 @controller_required
@@ -510,30 +492,6 @@ def export_attendance_csv():
     finally:
         if conn: conn.close()
 
-@app.route('/edit_attendance/<int:session_id>')
-@controller_required
-def edit_attendance(session_id):
-    conn = get_db_connection()
-    if not conn:
-        flash("Database connection failed.", "danger")
-        return redirect(url_for('controller_dashboard'))
-    try:
-        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-            cur.execute(
-                "SELECT s.id, c.class_name, s.start_time FROM attendance_sessions s JOIN classes c ON s.class_id = c.id WHERE s.id = %s",
-                (session_id,)
-            )
-            session_info = cur.fetchone()
-            if not session_info:
-                flash("Session not found.", "danger")
-                return redirect(url_for('controller_dashboard'))
-            return render_template('edit_attendance.html', session=dict(session_info))
-    except Exception as e:
-        print(f"ERROR: edit_attendance: {e}")
-        flash("An error occurred loading session details.", "danger")
-        return redirect(url_for('controller_dashboard'))
-    finally:
-        if conn: conn.close()
 
 @app.route('/api/get_student_name/<enrollment_no>')
 def api_get_student_name(enrollment_no):
@@ -555,17 +513,72 @@ def api_get_student_name(enrollment_no):
     finally:
         if conn: conn.close()
 
-@app.route('/api/get_session_students_for_edit/<int:session_id>')
+# --- NEW/UPDATED ROUTES AND APIS FOR DAILY EDITING ---
+
+@app.route('/edit_attendance_days')
 @controller_required
-def api_get_session_students_for_edit(session_id):
+def edit_attendance_days():
+    """Page to select which of the last 7 class days to edit."""
     conn = get_db_connection()
     if not conn:
-        return jsonify({"success": False, "message": "Database failed."}), 500
+        flash("Database connection failed.", "danger")
+        return redirect(url_for('controller_dashboard'))
+    
+    session_days = []
+    try:
+        with conn.cursor() as cur:
+            class_id = get_class_id_by_name(CLASS_NAME)
+            cur.execute("""
+                SELECT DISTINCT DATE(start_time AT TIME ZONE 'UTC') as class_date
+                FROM attendance_sessions
+                WHERE class_id = %s
+                ORDER BY class_date DESC
+                LIMIT 7
+            """, (class_id,))
+            session_days = [row[0] for row in cur.fetchall()]
+    except Exception as e:
+        print(f"Error fetching session days: {e}")
+        flash("An error occurred fetching recent class days.", "danger")
+    finally:
+        if conn: conn.close()
+    
+    return render_template('edit_attendance_day_select.html', session_days=session_days, class_name=CLASS_NAME)
+
+
+@app.route('/edit_attendance_for_day/<date_str>')
+@controller_required
+def edit_attendance_for_day(date_str):
+    """The main page for editing a full day's attendance."""
+    try:
+        # Validate date format
+        day_to_edit = datetime.strptime(date_str, '%Y-%m-%d').date()
+        return render_template('edit_attendance_for_day.html', date_to_edit=day_to_edit.strftime('%Y-%m-%d'), class_name=CLASS_NAME)
+    except ValueError:
+        flash("Invalid date format.", "danger")
+        return redirect(url_for('edit_attendance_days'))
+
+
+@app.route('/api/get_students_for_day_edit/<date_str>')
+@controller_required
+def api_get_students_for_day_edit(date_str):
+    conn = get_db_connection()
+    if not conn: return jsonify({"success": False, "message": "Database failed."}), 500
+    
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            class_id = get_class_id_by_name(CLASS_NAME)
+            day_to_query = datetime.strptime(date_str, '%Y-%m-%d').date()
+            
             cur.execute("SELECT id, enrollment_no, name FROM students WHERE batch = %s ORDER BY enrollment_no", (BATCH_CODE,))
             all_students = cur.fetchall()
-            cur.execute("SELECT student_id FROM attendance_records WHERE session_id = %s", (session_id,))
+            
+            cur.execute("""
+                SELECT DISTINCT ar.student_id
+                FROM attendance_records ar
+                JOIN attendance_sessions s ON ar.session_id = s.id
+                WHERE s.class_id = %s AND DATE(s.start_time AT TIME ZONE 'UTC') = %s
+            """, (class_id, day_to_query))
+            
             present_student_ids = {row['student_id'] for row in cur.fetchall()}
             student_data = [
                 {'id': s['id'], 'enrollment_no': s['enrollment_no'], 'name': s['name'], 'is_present': s['id'] in present_student_ids}
@@ -573,40 +586,62 @@ def api_get_session_students_for_edit(session_id):
             ]
             return jsonify({"success": True, "students": student_data})
     except Exception as e:
-        print(f"ERROR: api_get_session_students_for_edit: {e}")
+        print(f"ERROR: api_get_students_for_day_edit: {e}")
         return jsonify({"success": False, "message": "An error occurred."}), 500
     finally:
         if conn: conn.close()
 
-@app.route('/api/update_attendance_record', methods=['POST'])
+
+@app.route('/api/update_daily_attendance', methods=['POST'])
 @controller_required
-def api_update_attendance_record():
+def api_update_daily_attendance():
     data = request.get_json()
-    if not all(k in data for k in ['session_id', 'student_id', 'is_present']):
+    date_str = data.get('date')
+    student_id = data.get('student_id')
+    is_present = data.get('is_present')
+
+    if not all([date_str, student_id, isinstance(is_present, bool)]):
         return jsonify({"success": False, "message": "Missing data."}), 400
+
     conn = get_db_connection()
-    if not conn:
-        return jsonify({"success": False, "message": "Database failed."}), 500
+    if not conn: return jsonify({"success": False, "message": "Database failed."}), 500
+
     try:
         with conn.cursor() as cur:
-            if data['is_present']:
+            class_id = get_class_id_by_name(CLASS_NAME)
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            
+            cur.execute(
+                "SELECT id FROM attendance_sessions WHERE class_id = %s AND DATE(start_time AT TIME ZONE 'UTC') = %s ORDER BY start_time ASC",
+                (class_id, target_date)
+            )
+            session_ids_for_day = [row[0] for row in cur.fetchall()]
+
+            if not session_ids_for_day:
+                return jsonify({"success": False, "message": "No sessions found for this day to edit."}), 404
+
+            if is_present:
+                # Add student to the first session of the day to mark them present
+                first_session_id = session_ids_for_day[0]
                 cur.execute(
-                    "INSERT INTO attendance_records (session_id, student_id, timestamp, ip_address) VALUES (%s, %s, %s, 'Manual_Edit') ON CONFLICT DO NOTHING",
-                    (data['session_id'], data['student_id'], datetime.now(timezone.utc))
+                    "INSERT INTO attendance_records (session_id, student_id, timestamp, ip_address) VALUES (%s, %s, %s, 'Manual_Day_Edit') ON CONFLICT DO NOTHING",
+                    (first_session_id, student_id, datetime.now(timezone.utc))
                 )
             else:
+                # Remove student from ALL sessions of that day
                 cur.execute(
-                    "DELETE FROM attendance_records WHERE session_id = %s AND student_id = %s",
-                    (data['session_id'], data['student_id'])
+                    "DELETE FROM attendance_records WHERE student_id = %s AND session_id = ANY(%s)",
+                    (student_id, session_ids_for_day)
                 )
             conn.commit()
             return jsonify({"success": True, "message": "Attendance updated."})
     except Exception as e:
         conn.rollback()
-        print(f"ERROR: api_update_attendance_record: {e}")
+        print(f"ERROR: api_update_daily_attendance: {e}")
         return jsonify({"success": False, "message": "An error occurred."}), 500
     finally:
         if conn: conn.close()
+
 
 if __name__ == '__main__':
     # Runs on port 5002 to avoid conflict with the other app

@@ -33,13 +33,10 @@
                     <p><strong>Active Session (ID: {{ active_session.id }})</strong></p>
                     <p>Time Remaining: <span id="timer-{{ active_session.id }}" style="font-weight: bold;">{{ active_session.remaining_time }}s</span></p>
                     <button type="button" class="button end-session-btn" data-session-id="{{ active_session.id }}" style="background-color: #dc3545;">End Session Now</button>
-                    <a href="{{ url_for('edit_attendance', session_id=active_session.id) }}" class="button">Edit Live Attendance</a>
                 {% else %}
                     <p>No active session for {{ class_name }}.</p>
-                    <form action="{{ url_for('start_session') }}" method="post">
-                        <input type="hidden" name="class_id" value="{{ class_id }}">
-                        <button type="submit" class="button">Start New 5-Minute Session</button>
-                    </form>
+                    <!-- UPDATED: This button now triggers JavaScript to get location -->
+                    <button type="button" id="start-session-btn" class="button">Start New 5-Minute Session</button>
                 {% endif %}
             </div>
 
@@ -47,42 +44,14 @@
                 <h3>Attendance Reports & Management</h3>
                 <p>View comprehensive attendance records and manage daily data.</p>
                 <a href="{{ url_for('attendance_report') }}" class="button">View Daily Report</a>
+                <!-- NEW: Link to edit attendance by day -->
+                <a href="{{ url_for('edit_attendance_days') }}" class="button">Edit Past 7 Days' Attendance</a>
             </div>
 
-            <h3 style="margin-top: 30px;">Past Sessions</h3>
-            {% if all_sessions %}
-            <div style="overflow-x: auto;">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Session ID</th>
-                            <th>Start Time (UTC)</th>
-                            <th>End Time (UTC)</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for session in all_sessions %}
-                        <tr>
-                            <td>{{ session.id }}</td>
-                            <td>{{ session.start_time }}</td>
-                            <td>{{ session.end_time }}</td>
-                            <td>
-                                <a href="{{ url_for('edit_attendance', session_id=session.id) }}" class="button" style="padding: 5px 10px; font-size: 0.9em;">Edit</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="info-message">
-                No past sessions found.
-            </div>
-            {% endif %}
         </div>
     </div>
     <script>
+        // This data is still useful for the countdown timer
         window.activeSessionData = {{ active_session | tojson | default('{}', true) }};
     </script>
     <script src="{{ url_for('static', filename='main.js') }}"></script>

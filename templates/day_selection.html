@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Day to Edit</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Select a Day to Edit Attendance</h2>
+            <p>Class: {{ class_name }}</p>
+            <a href="{{ url_for('controller_dashboard') }}" class="back-link button">Back to Dashboard</a>
+        </div>
+
+        <div class="dashboard-content">
+            {% if session_days %}
+                <div class="section-card">
+                    <h3>Last 7 Class Days</h3>
+                    <p>Please select a day to edit its attendance records.</p>
+                    <ul style="list-style: none; padding: 0;">
+                        {% for day in session_days %}
+                            <li style="margin-bottom: 10px;">
+                                <a href="{{ url_for('edit_attendance_for_day', date_str=day.strftime('%Y-%m-%d')) }}" class="button">
+                                    Edit {{ day.strftime('%A, %B %d, %Y') }}
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% else %}
+                <div class="info-message">
+                    No past class days with attendance sessions were found.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
