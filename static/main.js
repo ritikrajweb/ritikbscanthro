@@ -30,6 +30,7 @@ function initStudentPage() {
     const studentNameDisplay = document.getElementById('student-name-display');
     const timerStudentSpan = document.getElementById('timer-student');
 
+    // This check is safe because it handles the null case correctly
     if (!window.activeSessionDataStudent || !window.activeSessionDataStudent.id) {
         console.log('No active session data found on student page.');
         return;
@@ -186,7 +187,26 @@ function initControllerAndReportPage() {
     window.addEventListener('click', (event) => { if (event.target == confirmationModal) hideConfirmationModal(); });
     if (confirmYesBtn) { confirmYesBtn.addEventListener('click', async () => { const dateToProcess = pendingDeleteDate; hideConfirmationModal(); if (dateToProcess) { await deleteDailyAttendance(dateToProcess); } pendingDeleteDate = null; }); }
     document.querySelectorAll('.end-session-btn').forEach(button => { button.addEventListener('click', async function() { const sessionId = this.dataset.sessionId; showStatusMessage('Ending session...', 'info'); try { const response = await fetch(`/end_session/${sessionId}`, { method: 'POST' }); const data = await response.json(); showStatusMessage(data.message, data.category); if (data.success) { setTimeout(() => window.location.reload(), 1000); } } catch (error) { showStatusMessage('An error occurred while ending the session.', 'error'); } }); });
-    if (typeof window.activeSessionData !== 'undefined' && window.activeSessionData.id) { let remainingTime = window.activeSessionData.remaining_time; let timerDisplay = document.getElementById(`timer-${window.activeSessionData.id}`); if (timerDisplay && remainingTime > 0) { let controllerTimer = setInterval(() => { remainingTime--; if (remainingTime <= 0) { clearInterval(controllerTimer); window.location.reload(); } let minutes = Math.floor(remainingTime / 60); let seconds = remainingTime % 60; timerDisplay.innerHTML = `${minutes}m ${seconds}s`; }, 1000); } }
+    
+    // ** THE FIX IS HERE **
+    // This condition now safely checks if window.activeSessionData is a valid object before trying to access its properties.
+    if (window.activeSessionData && window.activeSessionData.id) { 
+        let remainingTime = window.activeSessionData.remaining_time; 
+        let timerDisplay = document.getElementById(`timer-${window.activeSessionData.id}`); 
+        if (timerDisplay && remainingTime > 0) { 
+            let controllerTimer = setInterval(() => { 
+                remainingTime--; 
+                if (remainingTime <= 0) { 
+                    clearInterval(controllerTimer); 
+                    window.location.reload(); 
+                } 
+                let minutes = Math.floor(remainingTime / 60); 
+                let seconds = remainingTime % 60; 
+                timerDisplay.innerHTML = `${minutes}m ${seconds}s`; 
+            }, 1000); 
+        } 
+    }
+
     document.body.addEventListener('click', function(event) { if (event.target && event.target.classList.contains('delete-day-btn')) { const dateToDelete = event.target.dataset.date; showConfirmationModal(`Are you sure you want to delete all attendance records for ${dateToDelete}? This action cannot be undone.`, dateToDelete); } });
     async function deleteDailyAttendance(date) { showStatusMessage(`Deleting attendance for ${date}...`, 'info'); try { const response = await fetch('/delete_daily_attendance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date: date }) }); const data = await response.json(); showStatusMessage(data.message, data.category); if (data.success) { setTimeout(() => window.location.reload(), 1000); } } catch (error) { showStatusMessage('A network error occurred during deletion.', 'error'); } }
 }
@@ -260,3 +280,4 @@ function startStudentTimer(remainingTime, timerElement) { if (!timerElement || r
 function showStatusMessage(message, type) { const statusMessageDiv = document.getElementById('status-message'); if (statusMessageDiv) { statusMessageDiv.textContent = message; statusMessageDiv.className = `status-message ${type}`; statusMessageDiv.style.display = 'block'; setTimeout(() => { statusMessageDiv.style.display = 'none'; }, 5000); } }
 function haversineDistance(lat1, lon1, lat2, lon2) { const R = 6371e3; const φ1 = lat1 * Math.PI / 180; const φ2 = lat2 * Math.PI / 180; const Δφ = (lat2 - lat1) * Math.PI / 180; const Δλ = (lon2 - lon1) * Math.PI / 180; const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2); const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); return R * c; }
 function debounce(func, delay) { let timeout; return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), delay); }; }
+
