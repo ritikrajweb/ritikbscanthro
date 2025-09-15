@@ -3,56 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ class_name }} Controller Dashboard</title>
+    <title>Controller Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h2>{{ class_name }} Controller Dashboard</h2>
-            <p>Welcome, {{ controller_name }} ({{ username }})!</p>
+            <h2>Controller Dashboard</h2>
+            <p>Welcome, {{ username }}!</p>
             <a href="{{ url_for('logout') }}" class="button logout-button">Logout</a>
         </div>
         
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <ul class="flashes">
-                    {% for category, message in messages %}
-                        <li class="{{ category }}">{{ message }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
-        {% endwith %}
-
         <div id="status-message" class="status-message" style="display: none;"></div>
 
         <div class="dashboard-content">
             <div class="section-card">
                 <h3>Attendance Session Control ({{ class_name }})</h3>
                 {% if active_session %}
-                    <p><strong>Active Session (ID: {{ active_session.id }})</strong></p>
-                    <p>Time Remaining: <span id="timer-{{ active_session.id }}" style="font-weight: bold;">{{ active_session.remaining_time }}s</span></p>
-                    <button type="button" class="button end-session-btn" data-session-id="{{ active_session.id }}" style="background-color: #dc3545;">End Session Now</button>
+                    <p>Active Session (ID: {{ active_session.id }})</p>
+                    <p>Time Remaining: <span id="timer-{{ active_session.id }}" style="font-weight: bold;"></span></p>
+                    <button type="button" class="button end-session-btn" data-session-id="{{ active_session.id }}">End Session Now</button>
+                    <button type="button" id="manual-edit-btn" class="button" data-session-id="{{ active_session.id }}" style="background-color: #17a2b8;">Manual Edit</button>
                 {% else %}
                     <p>No active session for {{ class_name }}.</p>
-                    <!-- UPDATED: This button now triggers JavaScript to get location -->
-                    <button type="button" id="start-session-btn" class="button">Start New 5-Minute Session</button>
+                    <button type="button" id="start-session-btn" class="button">Start New Session</button>
                 {% endif %}
             </div>
 
             <div class="section-card">
-                <h3>Attendance Reports & Management</h3>
-                <p>View comprehensive attendance records and manage daily data.</p>
-                <a href="{{ url_for('attendance_report') }}" class="button">View Daily Report</a>
-                <!-- NEW: Link to edit attendance by day -->
-                <a href="{{ url_for('edit_attendance_days') }}" class="button">Edit Past 7 Days' Attendance</a>
+                <h3>Data & Reports</h3>
+                <p>View daily records, export data, or make corrections to past attendance.</p>
+                <a href="{{ url_for('attendance_report') }}" class="button">View Daily Attendance Report</a>
+                <a href="{{ url_for('edit_attendance_days') }}" class="button" style="background-color: #ffc107; color: #121212;">Edit Past Attendance</a>
             </div>
-
         </div>
     </div>
+
+    <div id="manual-edit-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h3>Manual Attendance Entry</h3>
+            <p>Select students to mark as present for this session.</p>
+            <div id="student-list-container" class="manual-student-list">
+                </div>
+            <div class="modal-actions">
+                <button id="submit-manual-attendance" class="button">Submit Manual Attendance</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // This data is still useful for the countdown timer
-        window.activeSessionData = {{ active_session | tojson | default('{}', true) }};
+        window.activeSessionData = {{ active_session | tojson | default('null') }};
     </script>
     <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>

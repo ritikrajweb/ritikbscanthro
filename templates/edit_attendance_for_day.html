@@ -3,43 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Daily Attendance</title>
+    <title>Edit Attendance</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        .message { padding: 10px; margin-bottom: 15px; border-radius: 5px; font-weight: bold; text-align: center; }
-        .loading { background-color: #e0f7fa; color: #00796b; }
-        .error { background-color: #ffebee; color: #d32f2f; }
-        .data-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        .data-table th, .data-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        .data-table th { background-color: #f2f2f2; }
-        .attendance-checkbox { width: 20px; height: 20px; cursor: pointer; vertical-align: middle; margin: 0; }
+        .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; }
+        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; }
+        input:checked + .slider { background-color: #28a745; }
+        input:checked + .slider:before { transform: translateX(26px); }
+        .slider.round { border-radius: 34px; }
+        .slider.round:before { border-radius: 50%; }
+        .data-table td:last-child { text-align: center; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h2>Edit Attendance for {{ date_to_edit }}</h2>
+            <h2>Edit Attendance for {{ attendance_date }}</h2>
             <p>Class: {{ class_name }}</p>
             <a href="{{ url_for('edit_attendance_days') }}" class="back-link button">Back to Day Selection</a>
         </div>
 
         <div id="status-message" class="status-message" style="display: none;"></div>
 
-        <div id="loading-message" class="message loading" style="display: none;">Loading students...</div>
-        <div id="error-message" class="message error" style="display: none;"></div>
-
         <div class="dashboard-content">
-            <!-- The data-date attribute is used by the new JS logic -->
-            <table id="attendance-table-daily" class="data-table" data-date="{{ date_to_edit }}">
+            <table id="attendance-table" class="data-table" data-attendance-date="{{ attendance_date }}">
                 <thead>
                     <tr>
-                        <th>Enrollment No.</th>
-                        <th>Student Name</th>
+                        <th style="text-align:left;">Enrollment No.</th>
+                        <th style="text-align:left;">Student Name</th>
                         <th>Present</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr><td colspan="3">Loading students...</td></tr>
+                    <tr><td colspan="3" style="text-align:center;">Loading students...</td></tr>
                 </tbody>
             </table>
         </div>

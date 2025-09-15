@@ -37,7 +37,6 @@ CREATE TABLE attendance_sessions (
     start_time TIMESTAMPTZ NOT NULL,
     end_time TIMESTAMPTZ NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    -- NEW: Store the location for this specific session
     session_lat REAL,
     session_lon REAL
 );
@@ -66,12 +65,12 @@ CREATE TABLE session_device_fingerprints (
 
 -- === INITIAL DATA INSERTION ===
 
--- Insert the single controller user
-INSERT INTO users (username, role) VALUES ('controller', 'controller') ON CONFLICT (username) DO NOTHING;
+-- Insert the controller user for B.Sc.
+INSERT INTO users (username, role) VALUES ('bsc_controller', 'controller') ON CONFLICT (username) DO NOTHING;
 
--- Insert the class data for B.Sc. - Anthro (geofence info removed from here)
+-- Insert the class data for B.Sc. - Anthro
 INSERT INTO classes (class_name, controller_id) VALUES
-('B.Sc. - Anthro', (SELECT id FROM users WHERE username = 'controller'))
+('B.Sc. - Anthro', (SELECT id FROM users WHERE username = 'bsc_controller'))
 ON CONFLICT (class_name) DO NOTHING;
 
 -- Insert all B.Sc. - Anthro student data
