@@ -12,13 +12,10 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'ritik_crafted_this_securely')
 
 # --- Configurations ---
-CLASS_NAME = 'Practical 4th Sem' # Merged class name
-
-# LOCATION: Kanad Bhawan (23°49'40"N 78°46'26"E)
-# Converted to Decimal: 23.82778, 78.77389
-FIXED_LAT = 23.82778
-FIXED_LON = 78.77389
-GEOFENCE_RADIUS = 80  # Updated to 80 meters
+CLASS_NAME = 'Practical 4th Sem'
+BATCH_CODE = 'BSC'
+# Dynamic Geofencing: Radius is set around the ADMIN'S location
+GEOFENCE_RADIUS = 50  
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 CONTROLLER_USER = os.environ.get('CONTROLLER_USER', 'anthro_admin')
@@ -69,7 +66,6 @@ def api_register():
     if not conn: return jsonify({'success': False, 'message': 'System unavailable'})
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-            # Check against the full student list (B.Sc. or B.A.)
             cur.execute("SELECT * FROM students WHERE enrollment_no = %s", (enrollment,))
             student = cur.fetchone()
             
@@ -150,15 +146,16 @@ def mark_attendance():
     if not conn: return jsonify({'success': False})
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            # 1. Get Session Details (Admin's location)
             cur.execute("SELECT * FROM attendance_sessions WHERE id = %s AND is_active = TRUE", (sid,))
             sess = cur.fetchone()
             if not sess: return jsonify({'success': False, 'message': 'Session expired.'})
             
-            # Use the FIXED Kanad Bhawan coordinates for distance check
-            dist = haversine(lat, lon, FIXED_LAT, FIXED_LON)
+            # 2. Dynamic Distance Check
+            dist = haversine(lat, lon, sess['session_lat'], sess['session_lon'])
             
             if dist > GEOFENCE_RADIUS: 
-                return jsonify({'success': False, 'message': f'Too far ({int(dist)}m). Must be at Kanad Bhawan.'})
+                return jsonify({'success': False, 'message': f'Too far ({int(dist)}m). Move closer to the controller.'})
             
             cur.execute("INSERT INTO attendance_records (session_id, student_id, timestamp, latitude, longitude, ip_address) VALUES (%s, %s, NOW(), %s, %s, 'Mobile') ON CONFLICT DO NOTHING",
                        (sid, session['student_id'], lat, lon))
@@ -205,6 +202,14 @@ def controller_dashboard():
 def start_session():
     if session.get('role') != 'controller': return jsonify({'success': False})
     
+    # Capture Admin's current location from the request
+    data = request.json
+    admin_lat = data.get('lat')
+    admin_lon = data.get('lon')
+
+    if not admin_lat or not admin_lon:
+        return jsonify({'success': False, 'message': 'GPS location required. Please enable location.'})
+
     conn = get_db()
     try:
         with conn.cursor() as cur:
@@ -212,10 +217,10 @@ def start_session():
             class_id = cur.fetchone()[0]
             token = secrets.token_hex(4)
             
-            # Storing FIXED_LAT/LON in the session record
+            # Store Admin's location as the session center
             cur.execute("""INSERT INTO attendance_sessions (class_id, controller_id, session_token, start_time, end_time, session_lat, session_lon) 
                         VALUES (%s, %s, %s, NOW(), NOW() + interval '5 minutes', %s, %s)""", 
-                        (class_id, session['user_id'], token, FIXED_LAT, FIXED_LON))
+                        (class_id, session['user_id'], token, admin_lat, admin_lon))
             conn.commit()
             return jsonify({'success': True})
     finally: conn.close()
@@ -240,7 +245,6 @@ def report():
             cur.execute("SELECT id FROM classes WHERE class_name = %s", (CLASS_NAME,))
             class_id = cur.fetchone()[0]
             
-            # Fetch ALL students (both BA and BSC)
             cur.execute("SELECT name, enrollment_no, id, batch FROM students ORDER BY batch, enrollment_no")
             students = cur.fetchall()
             

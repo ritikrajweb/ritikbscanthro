@@ -1,7 +1,18 @@
 // Utilities
 function showMsg(txt, type='error') {
-    const el = document.getElementById('msg');
-    if(el) { el.textContent = txt; el.className = `message ${type}`; el.style.display = 'block'; }
+    const el = document.getElementById('msg') || createMsgBox();
+    el.textContent = txt; 
+    el.className = `message ${type}`; 
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+function createMsgBox() {
+    const div = document.createElement('div');
+    div.id = 'msg';
+    div.className = 'message';
+    document.querySelector('.container').prepend(div);
+    return div;
 }
 
 function getDevId() {
@@ -45,7 +56,7 @@ async function auth(e, type) {
     }
 }
 
-// Attendance
+// Attendance (Students)
 function mark(sid) {
     const btn = document.getElementById('mark-btn');
     const txt = document.getElementById('gps-status');
@@ -79,17 +90,43 @@ function mark(sid) {
     }, {enableHighAccuracy: true});
 }
 
-// Admin
+// Admin Controls (UPDATED FOR DYNAMIC GEOFENCE)
 async function startSession() {
-    if(!confirm("Start 5 minute session?")) return;
+    if(!confirm("Start 5 minute session? This will set the class location to where you are standing NOW.")) return;
+    
+    const btn = document.querySelector('button[onclick="startSession()"]');
+    if(btn) { btn.disabled = true; btn.textContent = "Acquiring GPS..."; }
+
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        if(btn) btn.disabled = false;
+        return;
+    }
+
     navigator.geolocation.getCurrentPosition(async (pos) => {
-        await fetch('/api/session/start', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({lat: pos.coords.latitude, lon: pos.coords.longitude})
-        });
-        location.reload();
-    });
+        try {
+            const res = await fetch('/api/session/start', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    lat: pos.coords.latitude,
+                    lon: pos.coords.longitude
+                })
+            });
+            const json = await res.json();
+            if(json.success) location.reload();
+            else {
+                alert("Error: " + json.message);
+                if(btn) { btn.disabled = false; btn.textContent = "Start 5-Min Session"; }
+            }
+        } catch(e) { 
+            alert("Network Error"); 
+            if(btn) btn.disabled = false;
+        }
+    }, (err) => {
+        alert("Location access denied. You must enable GPS to start the session.");
+        if(btn) { btn.disabled = false; btn.textContent = "Start 5-Min Session"; }
+    }, {enableHighAccuracy: true});
 }
 
 async function endSession() {
