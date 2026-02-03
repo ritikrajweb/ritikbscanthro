@@ -14,8 +14,9 @@ app.secret_key = os.environ.get('SECRET_KEY', 'ritik_crafted_this_securely')
 # --- Configurations ---
 CLASS_NAME = 'Practical 4th Sem'
 BATCH_CODE = 'BSC'
-# Dynamic Geofencing: Radius is set around the ADMIN'S location
-GEOFENCE_RADIUS = 50  
+
+# UPDATED: Radius set to 80m (Sweet spot for Uni Wi-Fi accuracy)
+GEOFENCE_RADIUS = 80  
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 CONTROLLER_USER = os.environ.get('CONTROLLER_USER', 'anthro_admin')
@@ -112,7 +113,6 @@ def student_dashboard():
     if conn:
         try:
             with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-                # Stats
                 cur.execute("SELECT id FROM classes WHERE class_name = %s", (CLASS_NAME,))
                 class_id = cur.fetchone()[0]
                 
@@ -124,12 +124,10 @@ def student_dashboard():
                 
                 if stats['total'] > 0: stats['percent'] = round((stats['present'] / stats['total']) * 100)
                 
-                # Active Session
                 cur.execute("SELECT * FROM attendance_sessions WHERE class_id = %s AND is_active = TRUE", (class_id,))
                 sess = cur.fetchone()
                 if sess:
                     active_session = {'id': sess['id'], 'end_time': sess['end_time'].isoformat()}
-                    # Check if already marked
                     cur.execute("SELECT 1 FROM attendance_records WHERE session_id = %s AND student_id = %s", (sess['id'], session['student_id']))
                     active_session['marked'] = cur.fetchone() is not None
         finally: conn.close()
@@ -146,12 +144,11 @@ def mark_attendance():
     if not conn: return jsonify({'success': False})
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-            # 1. Get Session Details (Admin's location)
             cur.execute("SELECT * FROM attendance_sessions WHERE id = %s AND is_active = TRUE", (sid,))
             sess = cur.fetchone()
             if not sess: return jsonify({'success': False, 'message': 'Session expired.'})
             
-            # 2. Dynamic Distance Check
+            # Dynamic Distance Check (Radius 80m)
             dist = haversine(lat, lon, sess['session_lat'], sess['session_lon'])
             
             if dist > GEOFENCE_RADIUS: 
@@ -202,7 +199,7 @@ def controller_dashboard():
 def start_session():
     if session.get('role') != 'controller': return jsonify({'success': False})
     
-    # Capture Admin's current location from the request
+    # Capture Admin Location for Dynamic Center
     data = request.json
     admin_lat = data.get('lat')
     admin_lon = data.get('lon')
@@ -217,7 +214,6 @@ def start_session():
             class_id = cur.fetchone()[0]
             token = secrets.token_hex(4)
             
-            # Store Admin's location as the session center
             cur.execute("""INSERT INTO attendance_sessions (class_id, controller_id, session_token, start_time, end_time, session_lat, session_lon) 
                         VALUES (%s, %s, %s, NOW(), NOW() + interval '5 minutes', %s, %s)""", 
                         (class_id, session['user_id'], token, admin_lat, admin_lon))
@@ -235,6 +231,53 @@ def end_session():
             conn.commit()
             return jsonify({'success': True})
     finally: conn.close()
+
+# --- Manual Mark Routes ---
+@app.route('/api/get_students_for_manual_edit/<int:session_id>')
+def get_students_manual(session_id):
+    if session.get('role') != 'controller': return jsonify({'success': False})
+    
+    conn = get_db()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            # Get all students
+            cur.execute("SELECT id, name, enrollment_no FROM students ORDER BY enrollment_no")
+            all_students = cur.fetchall()
+            
+            # Get already present students
+            cur.execute("SELECT student_id FROM attendance_records WHERE session_id = %s", (session_id,))
+            present_ids = {row['student_id'] for row in cur.fetchall()}
+            
+            student_list = []
+            for s in all_students:
+                student_list.append({
+                    'id': s['id'],
+                    'name': s['name'],
+                    'enrollment_no': s['enrollment_no'],
+                    'is_present': s['id'] in present_ids
+                })
+                
+            return jsonify({'success': True, 'students': student_list})
+    finally:
+        conn.close()
+
+@app.route('/api/manual_mark_attendance', methods=['POST'])
+def manual_mark_attendance():
+    if session.get('role') != 'controller': return jsonify({'success': False})
+    data = request.json
+    
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO attendance_records (session_id, student_id, timestamp, ip_address)
+                VALUES (%s, %s, NOW(), 'Manual Admin Entry')
+                ON CONFLICT (session_id, student_id) DO NOTHING
+            """, (data['session_id'], data['student_id']))
+            conn.commit()
+            return jsonify({'success': True})
+    finally:
+        conn.close()
 
 @app.route('/report')
 def report():

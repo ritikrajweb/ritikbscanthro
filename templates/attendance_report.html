@@ -4,24 +4,30 @@
     <meta charset="UTF-8">
     <title>Report</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        body { background: #f8fafc; color: #333; } /* Light mode for readability */
+        body { background: #f8fafc; color: #333; }
         table { width: 100%; border-collapse: collapse; background: white; }
         th, td { padding: 12px; border: 1px solid #e2e8f0; text-align: center; font-size: 0.9rem; }
         th { background: #f1f5f9; text-align: left; position: sticky; left: 0; }
         .name-col { text-align: left; font-weight: 600; }
         .p { color: #10b981; background: #ecfdf5; }
         .a { color: #ef4444; background: #fef2f2; }
-        .back-nav { padding: 20px; background: white; border-bottom: 1px solid #eee; margin-bottom: 20px; }
+        .back-nav { padding: 20px; background: white; border-bottom: 1px solid #eee; margin-bottom: 20px; display:flex; justify-content:space-between; align-items:center; }
+        #search-input { padding: 10px; border-radius: 8px; border: 1px solid #ccc; width: 250px; }
     </style>
 </head>
 <body>
     <div class="back-nav">
-        <a href="/controller" style="text-decoration: none; color: #3b82f6; font-weight: 600;">← Back to Dashboard</a>
-        <h2 style="margin: 10px 0 0;">{{ class_name }} Report</h2>
+        <div>
+            <a href="/controller" style="text-decoration: none; color: #3b82f6; font-weight: 600;">← Back to Dashboard</a>
+            <h2 style="margin: 5px 0 0;">{{ class_name }} Report</h2>
+        </div>
+        <input type="text" id="search-input" onkeyup="filterReport()" placeholder="Search Name or Roll No...">
     </div>
+    
     <div style="overflow-x: auto;">
-        <table>
+        <table id="report-table">
             <thead>
                 <tr>
                     <th>Student</th>
@@ -30,7 +36,7 @@
             </thead>
             <tbody>
                 {% for r in report %}
-                <tr>
+                <tr class="report-row">
                     <td class="name-col">{{ r.name }} <br><span style="font-weight:400; color:#666; font-size:0.8em">{{ r.roll }}</span></td>
                     {% for status in r.attendance %}
                         <td class="{{ status.lower() }}">{{ status }}</td>
@@ -40,5 +46,16 @@
             </tbody>
         </table>
     </div>
+
+    <script>
+        function filterReport() {
+            const term = document.getElementById('search-input').value.toLowerCase();
+            const rows = document.querySelectorAll('.report-row');
+            rows.forEach(row => {
+                const text = row.querySelector('.name-col').innerText.toLowerCase();
+                row.style.display = text.includes(term) ? '' : 'none';
+            });
+        }
+    </script>
 </body>
 </html>

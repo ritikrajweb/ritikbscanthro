@@ -14,17 +14,22 @@
     </nav>
 
     <div class="container admin-container">
+        <div id="status-message" class="status-message" style="display: none;"></div>
+
         <div class="control-panel">
             {% if active_session %}
                 <div class="session-status active">
                     <h2>Class in Progress</h2>
                     <div class="timer-display" id="admin-timer">00:00</div>
-                    <button class="btn-danger" onclick="endSession()">End Session</button>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button class="btn-danger" onclick="endSession()">End Session</button>
+                        <button class="btn-primary" onclick="openManualEdit({{ active_session.id }})">Manual Mark</button>
+                    </div>
                 </div>
             {% else %}
                 <div class="session-status idle">
                     <h2>Start Class</h2>
-                    <p>Students must be within 60m of your location.</p>
+                    <p>Radius is set to 80m around YOUR location.</p>
                     <button class="btn-primary" onclick="startSession()">Start 5-Min Session</button>
                 </div>
             {% endif %}
@@ -35,11 +40,88 @@
         </div>
     </div>
     
+    <div id="manual-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Manual Attendance</h3>
+                <span class="close-modal" onclick="closeModal()">&times;</span>
+            </div>
+            
+            <input type="text" id="manual-search" placeholder="Search student name..." onkeyup="filterStudents()" 
+                   style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 8px;">
+
+            <div id="student-list" class="student-select-list">
+                </div>
+        </div>
+    </div>
+
     <footer class="ritik-footer">
         <p>Crafted by <span>Ritik</span></p>
     </footer>
 
     <script>const endTime = "{{ active_session.end_time if active_session else '' }}";</script>
     <script src="{{ url_for('static', filename='main.js') }}"></script>
+    
+    <script>
+        // Additional Script for Manual Edit Logic
+        async function openManualEdit(sessionId) {
+            const modal = document.getElementById('manual-modal');
+            const list = document.getElementById('student-list');
+            list.innerHTML = 'Loading...';
+            modal.classList.remove('hidden');
+            
+            try {
+                const res = await fetch(`/api/get_students_for_manual_edit/${sessionId}`);
+                const json = await res.json();
+                
+                if(json.success) {
+                    list.innerHTML = '';
+                    json.students.forEach(s => {
+                        const div = document.createElement('div');
+                        div.className = 'student-row';
+                        div.style.padding = '10px';
+                        div.style.borderBottom = '1px solid #eee';
+                        div.style.display = 'flex';
+                        div.style.justifyContent = 'space-between';
+                        div.style.alignItems = 'center';
+                        div.innerHTML = `
+                            <span><strong>${s.enrollment_no}</strong> - ${s.name}</span>
+                            ${s.is_present ? 
+                                '<span style="color:green; font-weight:bold;">✓ Present</span>' : 
+                                `<button onclick="manualMark(${sessionId}, ${s.id}, this)" style="width:auto; padding:5px 10px; font-size:0.8rem;">Mark</button>`
+                            }
+                        `;
+                        list.appendChild(div);
+                    });
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function manualMark(sessionId, studentId, btn) {
+            btn.textContent = "...";
+            const res = await fetch('/api/manual_mark_attendance', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({session_id: sessionId, student_id: studentId})
+            });
+            const json = await res.json();
+            if(json.success) {
+                btn.parentElement.innerHTML = '<span style="color:green; font-weight:bold;">✓ Marked</span>';
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('manual-modal').classList.add('hidden');
+        }
+        
+        function filterStudents() {
+            const term = document.getElementById('manual-search').value.toLowerCase();
+            const rows = document.querySelectorAll('.student-row');
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = text.includes(term) ? 'flex' : 'none';
+            });
+        }
+    </script>
 </body>
 </html>
