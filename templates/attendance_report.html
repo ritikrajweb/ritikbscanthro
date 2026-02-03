@@ -2,112 +2,43 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attendance Report - {{ class_name }}</title>
+    <title>Report</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        .report-table-container { 
-            overflow-x: auto; 
-            margin-top: 20px; 
-            border: 1px solid #ddd;
-            border-radius: 8px;
-        }
-        .data-table th, .data-table td { 
-            text-align: center; 
-            white-space: nowrap; 
-            padding: 10px 12px;
-        }
-        .data-table th:first-child, .data-table td:first-child { 
-            text-align: left; 
-            position: sticky;
-            left: 0;
-            background-color: #f8f9fa;
-            z-index: 1;
-        }
-        .data-table th {
-             background-color: #f2f2f2;
-        }
-        .status-present { color: #28a745; font-weight: bold; }
-        .status-absent { color: #dc3545; font-weight: bold; }
-        .action-btn { 
-            color: white; 
-            text-decoration: none; 
-            display: inline-block; 
-            padding: 5px 10px; 
-            border-radius: 5px; 
-            font-size: 0.9em;
-            margin: 2px;
-            border: none; /* Ensure buttons look consistent */
-            cursor: pointer;
-        }
-        .edit-day-btn { background-color: #007bff; }
-        .edit-day-btn:hover { background-color: #0056b3; }
-        .delete-day-btn { background-color: #dc3545; }
-        .delete-day-btn:hover { background-color: #c82333; }
+        body { background: #f8fafc; color: #333; } /* Light mode for readability */
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { padding: 12px; border: 1px solid #e2e8f0; text-align: center; font-size: 0.9rem; }
+        th { background: #f1f5f9; text-align: left; position: sticky; left: 0; }
+        .name-col { text-align: left; font-weight: 600; }
+        .p { color: #10b981; background: #ecfdf5; }
+        .a { color: #ef4444; background: #fef2f2; }
+        .back-nav { padding: 20px; background: white; border-bottom: 1px solid #eee; margin-bottom: 20px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h2>Daily Attendance Report</h2>
-            <p>{{ class_name }}</p>
-            <div style="margin-top: 15px;">
-                <a href="{{ url_for('controller_dashboard') }}" class="back-link button">Back to Dashboard</a>
-                <a href="{{ url_for('export_csv') }}" class="button" style="background-color: #28a745;">Export as CSV</a>
-            </div>
-        </div>
-        
-        <div id="status-message" class="status-message" style="display: none;"></div>
-
-        <div class="dashboard-content">
-            {% if report_data %}
-            <div class="report-table-container">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th style="text-align:left;">Date</th>
-                            {% for student in students %}
-                            <th>{{ student.name }}<br><small>({{ student.enrollment_no }})</small></th>
-                            {% endfor %}
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for daily_entry in report_data %}
-                        <tr id="row-{{ daily_entry.date }}">
-                            <td style="font-weight:bold; text-align:left;">{{ daily_entry.date }}</td>
-                            {% for student_status in daily_entry.students %}
-                            <td class="status-{{ student_status.status | lower }}">{{ student_status.status }}</td>
-                            {% endfor %}
-                            <td>
-                                {% if daily_entry.is_editable %}
-                                <a href="{{ url_for('edit_attendance_for_day', date_str=daily_entry.date) }}" class="action-btn edit-day-btn">Edit</a>
-                                <button type="button" class="action-btn delete-day-btn" data-date="{{ daily_entry.date }}">Delete</button>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="info-message">
-                No attendance data is available yet. Start a session to begin recording attendance.
-            </div>
-            {% endif %}
-        </div>
+    <div class="back-nav">
+        <a href="/controller" style="text-decoration: none; color: #3b82f6; font-weight: 600;">← Back to Dashboard</a>
+        <h2 style="margin: 10px 0 0;">{{ class_name }} Report</h2>
     </div>
-    
-    <div id="confirmation-modal" class="modal" style="display:none;">
-        <div class="modal-content">
-            <h3>Confirm Deletion</h3>
-            <p>Are you sure you want to delete all attendance records for <strong id="modal-date-display"></strong>? This action cannot be undone.</p>
-            <div class="modal-actions">
-                <button id="confirm-delete-btn" class="button" style="background-color: #dc3545;">Yes, Delete</button>
-                <button id="cancel-delete-btn" class="button">Cancel</button>
-            </div>
-        </div>
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    {% for d in dates %}<th>{{ d }}</th>{% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in report %}
+                <tr>
+                    <td class="name-col">{{ r.name }} <br><span style="font-weight:400; color:#666; font-size:0.8em">{{ r.roll }}</span></td>
+                    {% for status in r.attendance %}
+                        <td class="{{ status.lower() }}">{{ status }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-    <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
 </html>

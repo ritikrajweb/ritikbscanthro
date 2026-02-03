@@ -3,58 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controller Dashboard</title>
+    <title>Controller</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h2>Controller Dashboard</h2>
-            <p>Welcome, {{ username }}!</p>
-            <a href="{{ url_for('logout') }}" class="button logout-button">Logout</a>
+    <nav class="glass-nav admin">
+        <span>Controller Panel</span>
+        <a href="/student/logout">Exit</a>
+    </nav>
+
+    <div class="container admin-container">
+        <div class="control-panel">
+            {% if active_session %}
+                <div class="session-status active">
+                    <h2>Class in Progress</h2>
+                    <div class="timer-display" id="admin-timer">00:00</div>
+                    <button class="btn-danger" onclick="endSession()">End Session</button>
+                </div>
+            {% else %}
+                <div class="session-status idle">
+                    <h2>Start Class</h2>
+                    <p>Students must be within 60m of your location.</p>
+                    <button class="btn-primary" onclick="startSession()">Start 5-Min Session</button>
+                </div>
+            {% endif %}
         </div>
         
-        <div id="status-message" class="status-message" style="display: none;"></div>
-
-        <div class="dashboard-content">
-            <div class="section-card">
-                <h3>Attendance Session Control ({{ class_name }})</h3>
-                {% if active_session %}
-                    <p>Active Session (ID: {{ active_session.id }})</p>
-                    <p>Time Remaining: <span id="timer-{{ active_session.id }}" style="font-weight: bold;"></span></p>
-                    <button type="button" class="button end-session-btn" data-session-id="{{ active_session.id }}">End Session Now</button>
-                    <button type="button" id="manual-edit-btn" class="button" data-session-id="{{ active_session.id }}" style="background-color: #17a2b8;">Manual Edit</button>
-                {% else %}
-                    <p>No active session for {{ class_name }}.</p>
-                    <button type="button" id="start-session-btn" class="button">Start New Session</button>
-                {% endif %}
-            </div>
-
-            <div class="section-card">
-                <h3>Data & Reports</h3>
-                <p>View daily records, export data, or make corrections to past attendance.</p>
-                <a href="{{ url_for('attendance_report') }}" class="button">View Daily Attendance Report</a>
-                <a href="{{ url_for('edit_attendance_days') }}" class="button" style="background-color: #ffc107; color: #121212;">Edit Past Attendance</a>
-            </div>
+        <div class="quick-links">
+            <a href="/report" class="btn-secondary">View Full Report</a>
         </div>
     </div>
+    
+    <footer class="ritik-footer">
+        <p>Crafted by <span>Ritik</span></p>
+    </footer>
 
-    <div id="manual-edit-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn">&times;</span>
-            <h3>Manual Attendance Entry</h3>
-            <p>Select students to mark as present for this session.</p>
-            <div id="student-list-container" class="manual-student-list">
-                </div>
-            <div class="modal-actions">
-                <button id="submit-manual-attendance" class="button">Submit Manual Attendance</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        window.activeSessionData = {{ active_session | tojson | default('null') }};
-    </script>
+    <script>const endTime = "{{ active_session.end_time if active_session else '' }}";</script>
     <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
 </html>

@@ -3,83 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mark {{ class_name }} Attendance</title>
+    <title>Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="ivc-background"></div>
+    <nav class="glass-nav">
+        <span>{{ name }}</span>
+        <a href="/student/logout">Logout</a>
+    </nav>
+
     <div class="container">
-        <div class="header">
-            <h2>Mark {{ class_name }} Attendance</h2>
-            <p>Enter your enrollment number for the active session.</p>
+        <div class="stats-container">
+            <div class="stat-box">
+                <span class="label">Attendance</span>
+                <span class="value accent">{{ stats.percent }}%</span>
+            </div>
+            <div class="stat-box">
+                <span class="label">Total Classes</span>
+                <span class="value">{{ stats.total }}</span>
+            </div>
+            <div class="stat-box">
+                <span class="label">Attended</span>
+                <span class="value">{{ stats.present }}</span>
+            </div>
         </div>
 
-        <div id="status-message" class="status-message" style="display: none;"></div>
-
-        <div class="dashboard-content">
+        <div class="action-area">
             {% if active_session %}
-                <div class="section-card">
-                    <h3>Active Session</h3>
-                    <p>Time Remaining: <strong id="timer-student" style="font-size: 1.2em;"></strong></p>
-                    <form id="attendance-form" class="attendance-form">
-                        <div class="form-group">
-                            <label for="enrollment_no">Enrollment Number:</label>
-                            <input type="text" id="enrollment_no" name="enrollment_no" required placeholder="e.g., Y24120123" autocomplete="off" style="text-transform: uppercase;">
-                            <div id="student-name-display" class="student-name-display"></div>
-                        </div>
-                        <button type="submit" id="mark-btn" class="button">Mark My Attendance</button>
-                    </form>
-                </div>
-
-                <div id="troubleshooting-tips" class="troubleshooting-card">
-                    <h4>Location Accuracy Tips</h4>
-                    <p>If the system shows you are too far away but you're in class, please try the following:</p>
-                    <ul>
-                        <li>Move closer to a window for a better GPS signal.</li>
-                        <li>Toggle your phone's Location/GPS service off and on again.</li>
-                        <li>Ensure you are using your browser's "High Accuracy" location setting.</li>
-                        <li>As a last resort, restarting your phone can help.</li>
-                    </ul>
-                </div>
-                
-                <div class="live-attendance-section">
-                    <h3>Students Present Today ({{ todays_date }})</h3>
-                    <ul id="present-students-list">
-                        <li>Loading...</li>
-                    </ul>
-                </div>
-
-            {% elif present_students %}
-                <div class="final-attendance-list section-card">
-                    <h3>Attendance Recorded for Today ({{ todays_date }})</h3>
-                    <p>The following students were marked present today.</p>
-                    <ul>
-                        {% for student in present_students %}
-                            <li>{{ student.name }} ({{ student.enrollment_no }})</li>
-                        {% endfor %}
-                    </ul>
-                </div>
+                {% if active_session.marked %}
+                    <div class="status-card success">
+                        <div class="icon">✨</div>
+                        <h3>Attendance Marked</h3>
+                        <p>You are present for today's session.</p>
+                    </div>
+                {% else %}
+                    <div class="status-card active">
+                        <div class="pulse"></div>
+                        <h3>Session Active</h3>
+                        <p id="timer">Closing soon...</p>
+                        <button id="mark-btn" class="btn-primary" onclick="mark({{ active_session.id }})">Mark Present</button>
+                        <p id="gps-status" class="tiny-text">GPS verification required</p>
+                    </div>
+                {% endif %}
             {% else %}
-                 <div class="info-message">
-                    There is no active attendance session right now.
+                <div class="status-card inactive">
+                    <h3>No Active Session</h3>
+                    <p>Enjoy your day! Check back later.</p>
                 </div>
             {% endif %}
         </div>
-        
-        <footer class="signature-footer">
-            <div class="footer-left">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-code"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-                <span>Crafted by <strong>Ritik</strong></span>
-            </div>
-            <a href="https://utdgames.carrd.co/" target="_blank" class="button game-button">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-play"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                My Games
-            </a>
-        </footer>
     </div>
-    <script>
-        window.activeSessionDataStudent = {{ active_session | tojson | safe }};
-    </script>
+
+    <footer class="ritik-footer">
+        <p>Crafted by <span>Ritik</span></p>
+    </footer>
+
+    <script>const endTime = "{{ active_session.end_time if active_session else '' }}";</script>
     <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
 </html>

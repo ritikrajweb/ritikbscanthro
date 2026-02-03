@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | {{ class_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="main-container">
+        <div class="auth-card fade-in">
+            <div class="brand-header">
+                <h1>{{ class_name }}</h1>
+                <p>Digital Attendance Portal</p>
+            </div>
+
+            {% if is_admin %}
+            <form action="/login" method="POST">
+                <div class="input-group">
+                    <label>Controller ID</label>
+                    <input type="text" name="username" placeholder="Username" required>
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" name="password" placeholder="••••••" required>
+                </div>
+                <button type="submit" class="btn-primary">Controller Access</button>
+            </form>
+            {% else %}
+            <div id="login-form">
+                <form onsubmit="auth(event, 'login')">
+                    <div class="input-group">
+                        <label>Enrollment Number</label>
+                        <input type="text" name="enrollment" placeholder="Y24..." required autocomplete="off">
+                    </div>
+                    <div class="input-group">
+                        <label>Password</label>
+                        <input type="password" name="password" placeholder="••••••" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Secure Login</button>
+                </form>
+                <p class="switch-text">New device? <a onclick="toggle()">Register here</a></p>
+            </div>
+
+            <div id="register-form" class="hidden">
+                <div class="info-badge">
+                    <span>🔒 Device will be linked permanently.</span>
+                </div>
+                <form onsubmit="auth(event, 'register')">
+                    <div class="input-group">
+                        <label>Enrollment Number</label>
+                        <input type="text" name="enrollment" placeholder="Y24..." required>
+                    </div>
+                    <div class="input-group">
+                        <label>Create Password</label>
+                        <input type="password" name="password" placeholder="New Password" required>
+                    </div>
+                    <button type="submit" class="btn-accent">Register Device</button>
+                </form>
+                <p class="switch-text">Have an account? <a onclick="toggle()">Login</a></p>
+            </div>
+            {% endif %}
+            
+            <div id="msg" class="message"></div>
+        </div>
+        
+        <footer class="ritik-footer">
+            <p>Crafted by <span>Ritik</span></p>
+        </footer>
+    </div>
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+</body>
+</html>
