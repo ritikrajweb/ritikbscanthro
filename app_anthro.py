@@ -12,10 +12,16 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'ritik_crafted_this_securely')
 
 # --- Configurations ---
-CLASS_NAME = 'Practical 4th Sem'
-GEOFENCE_RADIUS = 60  # Meters
+CLASS_NAME = 'Practical 4th Sem' # Merged class name
+
+# LOCATION: Kanad Bhawan (23°49'40"N 78°46'26"E)
+# Converted to Decimal: 23.82778, 78.77389
+FIXED_LAT = 23.82778
+FIXED_LON = 78.77389
+GEOFENCE_RADIUS = 80  # Updated to 80 meters
+
 DATABASE_URL = os.environ.get('DATABASE_URL')
-CONTROLLER_USER = os.environ.get('CONTROLLER_USER', 'ritik_admin')
+CONTROLLER_USER = os.environ.get('CONTROLLER_USER', 'anthro_admin')
 CONTROLLER_PASS = os.environ.get('CONTROLLER_PASS', 'admin_123')
 
 def get_db():
@@ -34,7 +40,7 @@ def student_required(f):
     return decorated
 
 def haversine(lat1, lon1, lat2, lon2):
-    R = 6371000
+    R = 6371000 # Earth radius in meters
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlambda = math.radians(lon2 - lon1)
@@ -63,6 +69,7 @@ def api_register():
     if not conn: return jsonify({'success': False, 'message': 'System unavailable'})
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            # Check against the full student list (B.Sc. or B.A.)
             cur.execute("SELECT * FROM students WHERE enrollment_no = %s", (enrollment,))
             student = cur.fetchone()
             
@@ -147,8 +154,11 @@ def mark_attendance():
             sess = cur.fetchone()
             if not sess: return jsonify({'success': False, 'message': 'Session expired.'})
             
-            dist = haversine(lat, lon, sess['session_lat'], sess['session_lon'])
-            if dist > GEOFENCE_RADIUS: return jsonify({'success': False, 'message': f'Too far ({int(dist)}m). Move closer.'})
+            # Use the FIXED Kanad Bhawan coordinates for distance check
+            dist = haversine(lat, lon, FIXED_LAT, FIXED_LON)
+            
+            if dist > GEOFENCE_RADIUS: 
+                return jsonify({'success': False, 'message': f'Too far ({int(dist)}m). Must be at Kanad Bhawan.'})
             
             cur.execute("INSERT INTO attendance_records (session_id, student_id, timestamp, latitude, longitude, ip_address) VALUES (%s, %s, NOW(), %s, %s, 'Mobile') ON CONFLICT DO NOTHING",
                        (sid, session['student_id'], lat, lon))
@@ -194,16 +204,18 @@ def controller_dashboard():
 @app.route('/api/session/start', methods=['POST'])
 def start_session():
     if session.get('role') != 'controller': return jsonify({'success': False})
-    data = request.json
+    
     conn = get_db()
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT id FROM classes WHERE class_name = %s", (CLASS_NAME,))
             class_id = cur.fetchone()[0]
             token = secrets.token_hex(4)
+            
+            # Storing FIXED_LAT/LON in the session record
             cur.execute("""INSERT INTO attendance_sessions (class_id, controller_id, session_token, start_time, end_time, session_lat, session_lon) 
                         VALUES (%s, %s, %s, NOW(), NOW() + interval '5 minutes', %s, %s)""", 
-                        (class_id, session['user_id'], token, data['lat'], data['lon']))
+                        (class_id, session['user_id'], token, FIXED_LAT, FIXED_LON))
             conn.commit()
             return jsonify({'success': True})
     finally: conn.close()
@@ -228,7 +240,8 @@ def report():
             cur.execute("SELECT id FROM classes WHERE class_name = %s", (CLASS_NAME,))
             class_id = cur.fetchone()[0]
             
-            cur.execute("SELECT name, enrollment_no, id FROM students ORDER BY enrollment_no")
+            # Fetch ALL students (both BA and BSC)
+            cur.execute("SELECT name, enrollment_no, id, batch FROM students ORDER BY batch, enrollment_no")
             students = cur.fetchall()
             
             cur.execute("SELECT id, start_time::date FROM attendance_sessions WHERE class_id = %s ORDER BY start_time DESC", (class_id,))
@@ -236,7 +249,7 @@ def report():
             
             report_data = []
             for s in students:
-                row = {'name': s['name'], 'roll': s['enrollment_no'], 'attendance': []}
+                row = {'name': s['name'], 'roll': s['enrollment_no'], 'batch': s['batch'], 'attendance': []}
                 for sess in sessions:
                     cur.execute("SELECT 1 FROM attendance_records WHERE session_id = %s AND student_id = %s", (sess['id'], s['id']))
                     row['attendance'].append('P' if cur.fetchone() else 'A')
