@@ -1,18 +1,12 @@
 // Utilities
 function showMsg(txt, type='error') {
-    const el = document.getElementById('msg') || createMsgBox();
-    el.textContent = txt; 
-    el.className = `message ${type}`; 
-    el.style.display = 'block';
-    setTimeout(() => { el.style.display = 'none'; }, 4000);
-}
-
-function createMsgBox() {
-    const div = document.createElement('div');
-    div.id = 'msg';
-    div.className = 'message';
-    document.querySelector('.container').prepend(div);
-    return div;
+    const el = document.getElementById('status-message');
+    if(el) { 
+        el.textContent = txt; 
+        el.className = `status-message ${type}`; 
+        el.style.display = 'block';
+        setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
 }
 
 function getDevId() {
@@ -90,7 +84,7 @@ function mark(sid) {
     }, {enableHighAccuracy: true});
 }
 
-// Admin Controls (UPDATED FOR DYNAMIC GEOFENCE)
+// Admin Controls
 async function startSession() {
     if(!confirm("Start 5 minute session? This will set the class location to where you are standing NOW.")) return;
     
@@ -133,6 +127,52 @@ async function endSession() {
     if(!confirm("End session now?")) return;
     await fetch('/api/session/end', {method:'POST'});
     location.reload();
+}
+
+// Admin Manual Edit (Live)
+async function openManualEdit(sessionId) {
+    const modal = document.getElementById('manual-modal');
+    const list = document.getElementById('student-list');
+    list.innerHTML = '<div style="padding:20px; text-align:center;">Loading...</div>';
+    modal.classList.remove('hidden');
+    try {
+        const res = await fetch(`/api/get_students_for_manual_edit/${sessionId}`);
+        const json = await res.json();
+        if(json.success) {
+            list.innerHTML = '';
+            json.students.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'student-row';
+                div.innerHTML = `<span><strong>${s.enrollment_no}</strong> - ${s.name}</span>
+                    ${s.is_present ? '<span class="status-badge present">Present</span>' : `<button class="btn-sm" onclick="manualMark(${sessionId}, ${s.id}, this)">Mark</button>`}`;
+                list.appendChild(div);
+            });
+        }
+    } catch(e) { console.error(e); }
+}
+
+async function manualMark(sid, uid, btn) {
+    btn.textContent = "...";
+    const res = await fetch('/api/manual_mark_attendance', {
+        method:'POST', 
+        headers:{'Content-Type':'application/json'}, 
+        body:JSON.stringify({session_id:sid, student_id:uid})
+    });
+    if((await res.json()).success) {
+        const badge = document.createElement("span");
+        badge.className = "status-badge present";
+        badge.innerText = "Present";
+        btn.replaceWith(badge);
+    }
+}
+
+function closeModal() { document.getElementById('manual-modal').classList.add('hidden'); }
+
+function filterStudents() {
+    const term = document.getElementById('manual-search').value.toLowerCase();
+    document.querySelectorAll('.student-row').forEach(row => { 
+        row.style.display = row.innerText.toLowerCase().includes(term) ? 'flex' : 'none'; 
+    });
 }
 
 // Timer

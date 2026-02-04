@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="main-container">
+    <div class="main-container center-view">
         <div class="auth-card fade-in">
             <div class="brand-header">
                 <h1>{{ class_name }}</h1>
@@ -61,12 +61,12 @@
                 <p class="switch-text">Have an account? <a onclick="toggle()">Login</a></p>
             </div>
             {% endif %}
-            
             <div id="msg" class="message"></div>
         </div>
         
         <footer class="ritik-footer">
-            <p>Crafted by <span>Ritik</span></p>
+            <p>Crafted by <span>ऋतिक</span></p>
+            <p class="support-text">For issues: <a href="https://wa.me/918986937029?text=Hi" target="_blank">+91 8986937029</a> (WhatsApp Text Only)</p>
         </footer>
     </div>
     <script src="{{ url_for('static', filename='main.js') }}"></script>

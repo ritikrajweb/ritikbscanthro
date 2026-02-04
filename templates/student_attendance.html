@@ -33,7 +33,6 @@
             {% if active_session %}
                 {% if active_session.marked %}
                     <div class="status-card success">
-                        <div class="icon">✨</div>
                         <h3>Attendance Marked</h3>
                         <p>You are present for today's session.</p>
                     </div>
@@ -56,7 +55,8 @@
     </div>
 
     <footer class="ritik-footer">
-        <p>Crafted by <span>Ritik</span></p>
+        <p>Crafted by <span>ऋतिक</span></p>
+        <p class="support-text">For issues: <a href="https://wa.me/918986937029?text=Hi" target="_blank">+91 8986937029</a> (WhatsApp Text Only)</p>
     </footer>
 
     <script>const endTime = "{{ active_session.end_time if active_session else '' }}";</script>
