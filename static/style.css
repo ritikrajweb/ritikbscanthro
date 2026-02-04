@@ -12,12 +12,37 @@ body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var
 .tool-card { text-align: left; padding: 20px; margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between; }
 input { width: 100%; padding: 14px; background: #0f172a; border: 1px solid #334155; border-radius: 10px; color: white; box-sizing: border-box; }
 .input-group { text-align: left; margin-bottom: 20px; }
-button, .btn-primary, .btn-secondary, .btn-danger { width: 100%; padding: 14px; border-radius: 10px; border: none; font-weight: 600; cursor: pointer; margin-top:5px; box-sizing: border-box; }
+button, .btn-primary, .btn-secondary, .btn-danger, .btn-whatsapp { width: 100%; padding: 14px; border-radius: 10px; border: none; font-weight: 600; cursor: pointer; margin-top:5px; box-sizing: border-box; display: inline-flex; justify-content: center; align-items: center; text-decoration: none; font-size: 1rem; }
 .btn-primary { background: var(--primary); color: white; }
 .btn-secondary { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
 .btn-danger { background: var(--danger); color: white; }
 .btn-sm { padding: 6px 12px; width: auto; font-size: 0.85rem; }
 .full-width { width: 100%; }
+
+/* Professional Floating Support Widget */
+.btn-whatsapp {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background-color: #25D366;
+    color: white;
+    font-size: 0.95rem;
+    padding: 12px 24px;
+    width: auto;
+    border-radius: 50px;
+    gap: 10px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 2px solid rgba(255,255,255,0.1);
+}
+.btn-whatsapp:hover { 
+    background-color: #128c7e; 
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+}
+.btn-whatsapp svg { fill: white; width: 22px; height: 22px; }
+
 .status-message { padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; display: none; }
 .status-message.error { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
 .status-message.success { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
@@ -35,7 +60,9 @@ button, .btn-primary, .btn-secondary, .btn-danger { width: 100%; padding: 14px; 
 .ritik-footer { margin-top: 40px; padding: 20px; text-align: center; border-top: 1px solid rgba(255,255,255,0.05); }
 .ritik-footer p { margin: 5px 0; font-size: 0.9rem; color: #64748b; }
 .ritik-footer span { font-weight: 700; background: linear-gradient(90deg, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.support-text a { color: var(--text-muted); text-decoration: none; border-bottom: 1px dotted #64748b; }
 .glass-nav { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: var(--glass); backdrop-filter: blur(10px); border-bottom: var(--border); position: sticky; top: 0; z-index: 50; }
 .nav-link { color: var(--danger); text-decoration: none; font-weight: 600; }
-@media (max-width: 600px) { .management-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .management-grid { grid-template-columns: 1fr; } .btn-whatsapp { bottom: 20px; right: 20px; padding: 10px 16px; font-size: 0.85rem; } }
+
+/* Force Hide Helper */
+.hidden { display: none !important; }
