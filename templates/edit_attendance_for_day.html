@@ -3,45 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Attendance</title>
+    <title>Edit Attendance | {{ attendance_date }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+        /* Toggle Switch Style */
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; }
-        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; }
-        input:checked + .slider { background-color: #28a745; }
-        input:checked + .slider:before { transform: translateX(26px); }
-        .slider.round { border-radius: 34px; }
-        .slider.round:before { border-radius: 50%; }
-        .data-table td:last-child { text-align: center; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #10b981; }
+        input:checked + .slider:before { transform: translateX(24px); }
+        
+        /* Table Tweaks */
+        .data-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-top: 10px; }
+        .data-table th { text-align: left; color: #94a3b8; font-size: 0.85rem; padding: 10px; border-bottom: 1px solid #334155; }
+        .data-table td { background: #1e293b; padding: 12px 10px; first-child: border-radius: 8px 0 0 8px; last-child: border-radius: 0 8px 8px 0; }
+        .student-row td:first-child { border-radius: 10px 0 0 10px; }
+        .student-row td:last-child { border-radius: 0 10px 10px 0; text-align: center; }
+        
+        /* Header Area */
+        .header-area { margin-bottom: 20px; }
+        .header-area h2 { margin: 0 0 5px 0; }
+        .header-area p { color: #94a3b8; margin: 0; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h2>Edit Attendance for {{ attendance_date }}</h2>
-            <p>Class: {{ class_name }}</p>
-            <a href="{{ url_for('edit_attendance_days') }}" class="back-link button">Back to Day Selection</a>
+    <div class="container admin-container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div class="header-area">
+                <h2>Edit: {{ attendance_date }}</h2>
+                <p>{{ class_name }}</p>
+            </div>
+            <a href="/controller/edit_attendance" class="btn-secondary" style="width: auto; padding: 8px 16px;">← Back</a>
         </div>
 
-        <div id="status-message" class="status-message" style="display: none;"></div>
+        <input type="text" id="search" placeholder="Search student name or roll number..." onkeyup="filterList()" 
+               style="margin-bottom: 20px; background: #1e293b; border: 1px solid #334155;">
 
-        <div class="dashboard-content">
-            <table id="attendance-table" class="data-table" data-attendance-date="{{ attendance_date }}">
-                <thead>
-                    <tr>
-                        <th style="text-align:left;">Enrollment No.</th>
-                        <th style="text-align:left;">Student Name</th>
-                        <th>Present</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td colspan="3" style="text-align:center;">Loading students...</td></tr>
-                </tbody>
-            </table>
-        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Roll No</th>
+                    <th>Name</th>
+                    <th style="text-align: center;">Status</th>
+                </tr>
+            </thead>
+            <tbody id="list-body">
+                {% for s in students %}
+                <tr class="student-row">
+                    <td style="font-weight: bold; color: #818cf8;">{{ s.roll }}</td>
+                    <td class="name-col">{{ s.name }}</td>
+                    <td>
+                        <label class="switch">
+                            <input type="checkbox" onchange="toggleStatus('{{ s.id }}', this.checked)" {% if s.present %}checked{% endif %}>
+                            <span class="slider"></span>
+                        </label>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3" style="text-align: center; padding: 20px; color: #94a3b8;">No students found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-    <script src="{{ url_for('static', filename='main.js') }}"></script>
+
+    <script>
+        // Toggle Logic
+        async function toggleStatus(uid, isPresent) {
+            try {
+                // Visual feedback (optional: you could add a small toast msg here)
+                await fetch('/api/update_daily_attendance', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        date: "{{ attendance_date }}", 
+                        student_id: uid, 
+                        is_present: isPresent
+                    })
+                });
+            } catch(e) {
+                alert("Failed to update. Check internet connection.");
+            }
+        }
+
+        // Search Logic
+        function filterList() {
+            const term = document.getElementById('search').value.toLowerCase();
+            const rows = document.querySelectorAll('.student-row');
+            
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = text.includes(term) ? '' : 'none';
+            });
+        }
+    </script>
 </body>
 </html>
