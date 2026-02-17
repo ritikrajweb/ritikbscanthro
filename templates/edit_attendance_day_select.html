@@ -3,42 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Select Day to Edit</title>
+    <title>Select Date</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        .day-selection-list { list-style: none; padding: 0; }
-        .day-selection-list li { margin-bottom: 10px; }
+        .date-picker-container { background: #1e293b; padding: 30px; border-radius: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+        input[type="date"] { padding: 15px; font-size: 1.2rem; width: 100%; margin: 20px 0; background: #0f172a; color: white; border: 1px solid #334155; border-radius: 8px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h2>Select a Day to Edit</h2>
+        <div class="header" style="margin-bottom:30px;">
+            <h2>Manual Attendance Entry</h2>
             <p>Class: {{ class_name }}</p>
-            <a href="{{ url_for('controller_dashboard') }}" class="back-link button">Back to Dashboard</a>
+            <a href="/controller" class="back-link button">← Back to Dashboard</a>
         </div>
 
-        <div class="dashboard-content">
-            {% if session_days %}
-                <div class="section-card">
-                    <h3>Last 7 Class Days</h3>
-                    <p>Please select a day to modify its attendance records.</p>
-                    <ul class="day-selection-list">
-                        {% for day in session_days %}
-                            <li>
-                                <a href="{{ url_for('edit_attendance_for_day', date_str=day.strftime('%Y-%m-%d')) }}" class="button">
-                                    Edit {{ day.strftime('%A, %B %d, %Y') }}
-                                </a>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            {% else %}
-                <div class="info-message">
-                    No past class days with attendance sessions were found.
-                </div>
-            {% endif %}
+        <div class="date-picker-container">
+            <h3 style="margin-top:0;">Pick a Date</h3>
+            <p style="color: #94a3b8; font-size:0.9rem;">Select any date to create or edit a session.</p>
+            <input type="date" id="date-picker">
+            <button class="btn-primary" onclick="goToDate()">Edit Attendance for Selected Date</button>
         </div>
     </div>
+
+    <script>
+        function goToDate() {
+            const date = document.getElementById('date-picker').value;
+            if(date) window.location.href = `/controller/edit_attendance/${date}`;
+            else alert("Please pick a date first.");
+        }
+    </script>
 </body>
 </html>

@@ -16,7 +16,7 @@
     <div class="container admin-container">
         <div class="stats-container">
             <div class="stat-box">
-                <span class="label">Total Classes Held</span>
+                <span class="label">Total Classes</span>
                 <span class="value">{{ stats.total_classes }}</span>
             </div>
             <div class="stat-box">
@@ -30,7 +30,7 @@
         <div class="control-panel">
             {% if active_session %}
                 <div class="session-status active">
-                    <h2>🔴 Live Session in Progress</h2>
+                    <h2>🔴 Live Session ({{ active_session.batch }})</h2>
                     <div class="timer-display" id="admin-timer">00:00</div>
                     <div class="action-buttons">
                         <button class="btn-danger" onclick="endSession()">End Session</button>
@@ -39,9 +39,13 @@
                 </div>
             {% else %}
                 <div class="session-status idle">
-                    <h2>Start New Class</h2>
-                    <p class="desc-text">This will create a 5-minute attendance window around your current location (80m radius).</p>
-                    <button class="btn-primary big-btn" onclick="startSession()">Start 5-Min Session</button>
+                    <h2>Start Attendance</h2>
+                    <p class="desc-text">Select batch to start a 5-minute window.</p>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
+                        <button class="btn-primary" onclick="startSession('BA')">Start BA Only</button>
+                        <button class="btn-primary" onclick="startSession('BSC')">Start BSc Only</button>
+                    </div>
+                    <button class="btn-secondary full-width" style="margin-top:10px;" onclick="startSession('ALL')">Start Combined (Both)</button>
                 </div>
             {% endif %}
         </div>
@@ -49,12 +53,12 @@
         <div class="management-grid">
             <div class="tool-card">
                 <h3>Attendance Register</h3>
-                <p>View the complete attendance sheet with percentages.</p>
+                <p>View report & Download PDF.</p>
                 <a href="/report" class="btn-secondary full-width">View Report</a>
             </div>
             <div class="tool-card">
                 <h3>Correction Portal</h3>
-                <p>Edit attendance records for previous dates.</p>
+                <p>Edit attendance by Date.</p>
                 <a href="/controller/edit_attendance" class="btn-secondary full-width">Edit Past Attendance</a>
             </div>
         </div>

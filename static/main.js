@@ -70,26 +70,28 @@ function mark(sid) {
     }, (err) => { showMsg("Location denied/unavailable.", 'error'); btn.disabled = false; btn.textContent = "Retry"; }, {enableHighAccuracy: true});
 }
 
-// Admin Controls
-async function startSession() {
-    if(!confirm("Start 5 minute session? This sets location to YOUR current spot (80m radius).")) return;
-    const btn = document.querySelector('button[onclick="startSession()"]');
-    if(btn) { btn.disabled = true; btn.textContent = "Acquiring GPS..."; }
-
-    if (!navigator.geolocation) { alert("GPS not supported."); if(btn) btn.disabled = false; return; }
+// Admin Controls (UPDATED FOR BATCH)
+async function startSession(batchType = 'ALL') {
+    if(!confirm(`Start session for ${batchType}?`)) return;
+    
+    if (!navigator.geolocation) { alert("GPS not supported."); return; }
 
     navigator.geolocation.getCurrentPosition(async (pos) => {
         try {
             const res = await fetch('/api/session/start', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({lat: pos.coords.latitude, lon: pos.coords.longitude})
+                body: JSON.stringify({
+                    lat: pos.coords.latitude, 
+                    lon: pos.coords.longitude,
+                    batch: batchType
+                })
             });
             const json = await res.json();
             if(json.success) location.reload();
-            else { alert("Error: " + json.message); if(btn) btn.disabled = false; }
-        } catch(e) { alert("Network Error"); if(btn) btn.disabled = false; }
-    }, (err) => { alert("Location access denied."); if(btn) btn.disabled = false; }, {enableHighAccuracy: true});
+            else alert("Error: " + json.message);
+        } catch(e) { alert("Network Error"); }
+    }, (err) => { alert("Location access denied."); }, {enableHighAccuracy: true});
 }
 
 async function endSession() {
